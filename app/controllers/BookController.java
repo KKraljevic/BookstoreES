@@ -67,6 +67,14 @@ public class BookController extends Controller {
         return ok(showResponse(searchRequest));
     }
 
+    public Result getBooksByPublishingPeriod (String startDate, String endDate) {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(QueryBuilders.rangeQuery("publishingDate").from(startDate).to(endDate));
+        searchSourceBuilder.size(10);
+        searchRequest.source(searchSourceBuilder);
+        return ok(showResponse(searchRequest));
+    }
+
     public Result getBooksByPrice (Long price) {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.matchQuery("price",price));
@@ -75,9 +83,25 @@ public class BookController extends Controller {
         return ok(showResponse(searchRequest));
     }
 
+    public Result getBooksByPriceRange (Long minPrice, Long maxPrice) {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(QueryBuilders.rangeQuery("price").gte(minPrice).lte(maxPrice));
+        searchSourceBuilder.size(10);
+        searchRequest.source(searchSourceBuilder);
+        return ok(showResponse(searchRequest));
+    }
+
     public Result getBooksByPageNumber (Long pageNumber) {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.matchQuery("pageNumber",pageNumber));
+        searchSourceBuilder.size(10);
+        searchRequest.source(searchSourceBuilder);
+        return ok(showResponse(searchRequest));
+    }
+
+    public Result getBooksByPageRange (Long minPages, Long maxPages) {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(QueryBuilders.rangeQuery("pageNumber").gte(minPages).lte(maxPages));
         searchSourceBuilder.size(10);
         searchRequest.source(searchSourceBuilder);
         return ok(showResponse(searchRequest));
