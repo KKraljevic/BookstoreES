@@ -1,9 +1,8 @@
-package repository;
+package repositories;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import models.Book;
-import models.Document;
 import org.apache.http.HttpHost;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteResponse;
@@ -30,23 +29,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ElasticSearchRepository implements Repository {
+public class BookRepository implements Repository {
 
     RestHighLevelClient client;
     SearchRequest searchRequest;
 
-    public ElasticSearchRepository() {
+    public BookRepository() {
 
         this.client = new RestHighLevelClient(RestClient.builder(
                 new HttpHost("localhost", 9200, "http")));
-        this.searchRequest  = new SearchRequest("bookstore");
+        this.searchRequest  = new SearchRequest("book-store");
     }
 
     @Override
-    public Document createBook(Document book) {
+    public Book createBook(Book book) {
         try {
             XContentBuilder builder = buildBookSource(book);
-            IndexRequest indexRequest = new IndexRequest("bookstore").source(builder);
+            IndexRequest indexRequest = new IndexRequest("book-store").source(builder);
             IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
             if (indexResponse.getResult() == DocWriteResponse.Result.CREATED) {
                 return book;
@@ -59,11 +58,11 @@ public class ElasticSearchRepository implements Repository {
     }
 
     @Override
-    public Document updateBook(Document updatedBook, String docId) {
-        UpdateRequest request = new UpdateRequest("bookstore", docId);
+    public Book updateBook(Book updatedBook, String docId) {
+        UpdateRequest request = new UpdateRequest("book-store", docId);
         try {
             XContentBuilder builder = buildBookSource(updatedBook);
-            IndexRequest indexRequest = new IndexRequest("bookstore").source(builder);
+            IndexRequest indexRequest = new IndexRequest("book-store").source(builder);
             UpdateResponse updateResponse = client.update(request, RequestOptions.DEFAULT);
             if (updateResponse.getResult() == DocWriteResponse.Result.CREATED) {
                 return updatedBook;
@@ -77,7 +76,7 @@ public class ElasticSearchRepository implements Repository {
 
     @Override
     public String deleteBook(String docId) {
-        DeleteRequest deleteRequest = new DeleteRequest("bookstore", docId);
+        DeleteRequest deleteRequest = new DeleteRequest("book-store", docId);
         try {
             DeleteResponse deleteResponse = client.delete(deleteRequest, RequestOptions.DEFAULT);
             return deleteResponse.status().toString();
@@ -88,17 +87,17 @@ public class ElasticSearchRepository implements Repository {
     }
 
     @Override
-    public List<Document> findAll() {
+    public List<Book> findAll() {
         return searchByField(null,null);
     }
 
     @Override
-    public List<Document> findByTitle(String title) {
-        return searchByField("book.title",title);
+    public List<Book> findByTitle(String title) {
+        return searchByField("title",title);
     }
 
     @Override
-    public List<Document> findByWriter(String firstName, String lastName) {
+    public List<Book> findByWriter(String firstName, String lastName) {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.multiMatchQuery(firstName+" "+lastName,
                 "writer.firstName","writer.lastName").type(MultiMatchQueryBuilder.Type.CROSS_FIELDS));
@@ -119,27 +118,27 @@ public class ElasticSearchRepository implements Repository {
     }
 
     @Override
-    public List<Document> findByCategory(String category) {
-        return searchByField("book.category.name",category);
+    public List<Book> findByCategory(String category) {
+        return searchByField("category.name",category);
     }
 
     @Override
-    public List<Document> findByPrice(Integer price) {
+    public List<Book> findByPrice(Integer price) {
         return searchByField("price",price.toString());
     }
 
     @Override
-    public List<Document> findByPageNumber(Integer pageNumber) {
+    public List<Book> findByPageNumber(Integer pageNumber) {
         return searchByField("pageNumber",pageNumber.toString());
     }
 
     @Override
-    public List<Document> findByPublishingDate(String date) {
+    public List<Book> findByPublishingDate(String date) {
         return searchByField("publishingDate",date);
     }
 
     @Override
-    public List<Document> findByNumberRange(String field, Integer min, Integer max) {
+    public List<Book> findByNumberRange(String field, Integer min, Integer max) {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.rangeQuery(field).gte(min).lte(max));
@@ -160,7 +159,7 @@ public class ElasticSearchRepository implements Repository {
     }
 
     @Override
-    public List<Document> findByDateRange(String field, String startDate, String endDate) {
+    public List<Book> findByDateRange(String field, String startDate, String endDate) {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.rangeQuery(field).from(startDate).to(endDate));
@@ -182,19 +181,19 @@ public class ElasticSearchRepository implements Repository {
     }
 
     @Override
-    public List<Document> searchBooks(String searchInput) {
+    public List<Book> searchBooks(String searchInput) {
         return searchByField(null,searchInput);
     }
 
-    public List<Document> searchByField(String fieldName, String searchText) {
-        SearchRequest searchRequest = new SearchRequest("bookstore");
+    public List<Book> searchByField(String fieldName, String searchText) {
+        SearchRequest searchRequest = new SearchRequest("book-store");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         if (fieldName==null && searchText==null) {
             searchSourceBuilder.query(QueryBuilders.matchAllQuery());
         }
         else {
             if (fieldName == null) {
-                searchSourceBuilder.query(QueryBuilders.matchQuery("book", searchText));
+                searchSourceBuilder.query(QueryBuilders.multiMatchQuery(searchText));
             } else {
                 searchSourceBuilder.query(QueryBuilders.matchQuery(fieldName, searchText));
             }
@@ -216,12 +215,12 @@ public class ElasticSearchRepository implements Repository {
         return null;
     }
 
-    public List<Document> mapBookList(SearchHits hits) {
+    public List<Book> mapBookList(SearchHits hits) {
         ObjectMapper mapper = new ObjectMapper();
-        List<Document> books = new ArrayList<>();
+        List<Book> books = new ArrayList<>();
         try {
             for (SearchHit hit : hits) {
-                Document book = mapper.readValue(hit.getSourceAsString(), Document.class);
+                Book book = mapper.readValue(hit.getSourceAsString(), Book.class);
                 books.add(book);
             }
         } catch (JsonProcessingException e) {
@@ -230,19 +229,18 @@ public class ElasticSearchRepository implements Repository {
         return books;
     }
 
-    public XContentBuilder buildBookSource (Document book) {
+    public XContentBuilder buildBookSource (Book book) {
         XContentBuilder builder = null;
         try {
             builder = XContentFactory.jsonBuilder();
 
             builder.startObject();
             {
-                builder.field("book");
-                builder.field("book.id",book.getBook().getId());
-                builder.field("book.title", book.getBook().getTitle());
-                builder.field("book.category");
-                builder.field("book.category.id",book.getBook().getCategory().getId());
-                builder.field("book.category.name",book.getBook().getCategory().getName());
+                builder.field("id",book.getId());
+                builder.field("title", book.getTitle());
+                builder.field("category");
+                builder.field("category.id",book.getCategory().getId());
+                builder.field("category.name",book.getCategory().getName());
                 builder.field("price",book.getPrice());
                 builder.field("pageNumber",book.getPageNumber());
                 builder.timeField("purchaseDate",book.getPurchaseDate());

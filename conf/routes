@@ -4,6 +4,7 @@
 
 GET     /                               controllers.HomeController.index
 GET     /books                          controllers.BookController.getBooks()
+GET     /books/search/:searchInput             controllers.BookController.searchBooks(searchInput:String)
 GET     /books/title/:title             controllers.BookController.getBooksByTitle(title:String)
 GET     /books/category/:category       controllers.BookController.getBooksByCategory(category:String)
 GET     /books/writer/:firstName/:lastName                  controllers.BookController.getBooksByWriter(firstName:String,lastName:String)
