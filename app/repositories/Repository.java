@@ -14,6 +14,8 @@ public interface Repository {
 
     List<Book> findAll();
 
+    Book findById(Long id);
+
     List<Book> findByTitle(String title);
 
     List<Book> findByWriter(String firstName,String lastName);
@@ -26,10 +28,12 @@ public interface Repository {
 
     List<Book> findByPublishingDate(String date);
 
-    List<Book> findByNumberRange(String field, Integer min, Integer max);
+    List<Book> findByNumberRange(String field, Integer min, Integer max, Integer size);
 
-    List<Book> findByDateRange(String field, String startDate, String endDate);
+    List<Book> findByDateRange(String field, String startDate, String endDate, Integer size);
 
     List<Book> searchBooks(String searchInput);
+
+    List<Book> getFeaturedBooks(Integer size);
 
 }

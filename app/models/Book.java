@@ -13,11 +13,13 @@ public class Book {
     Date publishingDate;
     Integer pageNumber;
     Date purchaseDate;
+    Integer unitsSold;
 
     public Book() {
     }
 
-    public Book(Long id, String title, Category category, Person customer, Person writer, Integer price, Date publishingDate, Integer pageNumber, Date purchaseDate) {
+    public Book(Long id, String title, Category category, Person customer, Person writer,
+                Integer price, Date publishingDate, Integer pageNumber, Date purchaseDate, Integer unitsSold) {
         this.id = id;
         this.title = title;
         this.category = category;
@@ -27,6 +29,7 @@ public class Book {
         this.publishingDate = publishingDate;
         this.pageNumber = pageNumber;
         this.purchaseDate = purchaseDate;
+        this.unitsSold = unitsSold;
     }
 
     public Long getId() {
@@ -100,4 +103,8 @@ public class Book {
     public void setPurchaseDate(Date purchaseDate) {
         this.purchaseDate = purchaseDate;
     }
+
+    public Integer getUnitsSold() { return unitsSold; }
+
+    public void setUnitsSold(Integer unitsSold) { this.unitsSold = unitsSold; }
 }

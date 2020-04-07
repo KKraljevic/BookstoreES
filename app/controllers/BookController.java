@@ -10,6 +10,7 @@ import javax.inject.Inject;
 public class BookController extends Controller {
 
     private final BookRepository bookRepository;
+    Integer defaultSize = 10;
 
     @Inject
     public BookController(BookRepository BookRepository){
@@ -19,6 +20,10 @@ public class BookController extends Controller {
 
     public Result getBooks() {
        return ok(Json.toJson(bookRepository.findAll()));
+    }
+
+    public Result getBooksById (Long id) {
+        return ok(Json.toJson(bookRepository.findById(id)));
     }
 
     public Result getBooksByTitle (String title) {
@@ -37,27 +42,31 @@ public class BookController extends Controller {
         return ok(Json.toJson(bookRepository.findByPublishingDate(publishingDate)));
     }
 
-    public Result getBooksByPublishingPeriod (String startDate, String endDate) {
-        return ok(Json.toJson(bookRepository.findByDateRange("publishingDate", startDate, endDate)));
+    public Result getBooksByPublishingPeriod (String startDate, String endDate, Integer size) {
+        return ok(Json.toJson(bookRepository.findByDateRange("publishingDate", startDate, endDate, size)));
     }
 
     public Result getBooksByPrice (Integer price) {
         return ok(Json.toJson(bookRepository.findByPrice(price)));
     }
 
-    public Result getBooksByPriceRange (Integer minPrice, Integer maxPrice) {
-        return ok(Json.toJson(bookRepository.findByNumberRange("price", minPrice, maxPrice)));
+    public Result getBooksByPriceRange (Integer minPrice, Integer maxPrice, Integer size) {
+        return ok(Json.toJson(bookRepository.findByNumberRange("price", minPrice, maxPrice, size)));
     }
 
     public Result getBooksByPageNumber (Integer pageNumber) {
         return ok(Json.toJson(bookRepository.findByPageNumber(pageNumber)));
     }
 
-    public Result getBooksByPageRange (Integer minLists, Integer maxLists) {
-        return ok(Json.toJson(bookRepository.findByNumberRange("pageNumber", minLists, maxLists)));
+    public Result getBooksByPageRange (Integer minLists, Integer maxLists, Integer size) {
+        return ok(Json.toJson(bookRepository.findByNumberRange("pageNumber", minLists, maxLists, size)));
     }
 
     public Result searchBooks (String searchInput) {
         return ok(Json.toJson(bookRepository.searchBooks(searchInput)));
+    }
+
+    public Result getFeaturedBooks (Integer size) {
+        return ok(Json.toJson(bookRepository.getFeaturedBooks(size)));
     }
 }

@@ -24,6 +24,8 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ public class BookRepository implements Repository {
 
     RestHighLevelClient client;
     SearchRequest searchRequest;
+    Integer defaultSize = 10;
 
     public BookRepository() {
 
@@ -88,12 +91,17 @@ public class BookRepository implements Repository {
 
     @Override
     public List<Book> findAll() {
-        return searchByField(null,null);
+        return searchByField(null,null, defaultSize);
+    }
+
+    @Override
+    public Book findById(Long id) {
+        return searchByField("id", id.toString(),1).get(0);
     }
 
     @Override
     public List<Book> findByTitle(String title) {
-        return searchByField("title",title);
+        return searchByField("title", title, defaultSize);
     }
 
     @Override
@@ -101,7 +109,7 @@ public class BookRepository implements Repository {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.multiMatchQuery(firstName+" "+lastName,
                 "writer.firstName","writer.lastName").type(MultiMatchQueryBuilder.Type.CROSS_FIELDS));
-        searchSourceBuilder.size(10);
+        searchSourceBuilder.size(defaultSize);
         searchRequest.source(searchSourceBuilder);
         try {
             SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
@@ -119,30 +127,30 @@ public class BookRepository implements Repository {
 
     @Override
     public List<Book> findByCategory(String category) {
-        return searchByField("category.name",category);
+        return searchByField("category.name", category, defaultSize);
     }
 
     @Override
     public List<Book> findByPrice(Integer price) {
-        return searchByField("price",price.toString());
+        return searchByField("price", price.toString(), defaultSize);
     }
 
     @Override
     public List<Book> findByPageNumber(Integer pageNumber) {
-        return searchByField("pageNumber",pageNumber.toString());
+        return searchByField("pageNumber", pageNumber.toString(), defaultSize);
     }
 
     @Override
     public List<Book> findByPublishingDate(String date) {
-        return searchByField("publishingDate",date);
+        return searchByField("publishingDate", date, defaultSize);
     }
 
     @Override
-    public List<Book> findByNumberRange(String field, Integer min, Integer max) {
+    public List<Book> findByNumberRange(String field, Integer min, Integer max, Integer size) {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.rangeQuery(field).gte(min).lte(max));
-        searchSourceBuilder.size(10);
+        searchSourceBuilder.size(size);
         searchRequest.source(searchSourceBuilder);
         try {
             SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
@@ -159,11 +167,11 @@ public class BookRepository implements Repository {
     }
 
     @Override
-    public List<Book> findByDateRange(String field, String startDate, String endDate) {
+    public List<Book> findByDateRange(String field, String startDate, String endDate, Integer size) {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.rangeQuery(field).from(startDate).to(endDate));
-        searchSourceBuilder.size(10);
+        searchSourceBuilder.size(size);
         searchRequest.source(searchSourceBuilder);
 
         try {
@@ -182,10 +190,15 @@ public class BookRepository implements Repository {
 
     @Override
     public List<Book> searchBooks(String searchInput) {
-        return searchByField(null,searchInput);
+        return searchByField(null, searchInput, defaultSize);
     }
 
-    public List<Book> searchByField(String fieldName, String searchText) {
+    @Override
+    public List<Book> getFeaturedBooks(Integer size) {
+        return searchByField(null, null, 4);
+    }
+
+    public List<Book> searchByField(String fieldName, String searchText, Integer size) {
         SearchRequest searchRequest = new SearchRequest("book-store");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         if (fieldName==null && searchText==null) {
@@ -199,7 +212,8 @@ public class BookRepository implements Repository {
             }
 
         }
-        searchSourceBuilder.size(10);
+        searchSourceBuilder.size(size);
+        searchSourceBuilder.sort(new FieldSortBuilder("unitsSold").order(SortOrder.DESC));
         searchRequest.source(searchSourceBuilder);
         try {
         SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
