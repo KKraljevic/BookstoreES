@@ -23,13 +23,23 @@ import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.BucketCollector;
+import org.elasticsearch.search.aggregations.bucket.filter.Filters;
+import org.elasticsearch.search.aggregations.bucket.global.Global;
+import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import play.libs.Json;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
 public class BookRepository implements Repository {
 
@@ -41,7 +51,7 @@ public class BookRepository implements Repository {
 
         this.client = new RestHighLevelClient(RestClient.builder(
                 new HttpHost("localhost", 9200, "http")));
-        this.searchRequest  = new SearchRequest("book-store");
+        this.searchRequest = new SearchRequest("book-store");
     }
 
     @Override
@@ -91,12 +101,12 @@ public class BookRepository implements Repository {
 
     @Override
     public List<Book> findAll() {
-        return searchByField(null,null, defaultSize);
+        return searchByField(null, null, defaultSize);
     }
 
     @Override
-    public Book findById(Long id) {
-        return searchByField("id", id.toString(),1).get(0);
+    public List<Book> findById(Long id) {
+        return searchByField("id", id.toString(), 1);
     }
 
     @Override
@@ -107,8 +117,8 @@ public class BookRepository implements Repository {
     @Override
     public List<Book> findByWriter(String firstName, String lastName) {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.query(QueryBuilders.multiMatchQuery(firstName+" "+lastName,
-                "writer.firstName","writer.lastName").type(MultiMatchQueryBuilder.Type.CROSS_FIELDS));
+        searchSourceBuilder.query(QueryBuilders.multiMatchQuery(firstName + " " + lastName,
+                "writer.firstName", "writer.lastName").type(MultiMatchQueryBuilder.Type.CROSS_FIELDS));
         searchSourceBuilder.size(defaultSize);
         searchRequest.source(searchSourceBuilder);
         try {
@@ -201,10 +211,9 @@ public class BookRepository implements Repository {
     public List<Book> searchByField(String fieldName, String searchText, Integer size) {
         SearchRequest searchRequest = new SearchRequest("book-store");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        if (fieldName==null && searchText==null) {
+        if (fieldName == null && searchText == null) {
             searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-        }
-        else {
+        } else {
             if (fieldName == null) {
                 searchSourceBuilder.query(QueryBuilders.multiMatchQuery(searchText));
             } else {
@@ -216,12 +225,12 @@ public class BookRepository implements Repository {
         searchSourceBuilder.sort(new FieldSortBuilder("unitsSold").order(SortOrder.DESC));
         searchRequest.source(searchSourceBuilder);
         try {
-        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-        SearchHits hits = searchResponse.getHits();
-        if (hits.getTotalHits().value == 0) {
-            return null;
-        }
-        return mapBookList(hits);
+            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            SearchHits hits = searchResponse.getHits();
+            if (hits.getTotalHits().value == 0) {
+                return null;
+            }
+            return mapBookList(hits);
 
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();
@@ -243,21 +252,21 @@ public class BookRepository implements Repository {
         return books;
     }
 
-    public XContentBuilder buildBookSource (Book book) {
+    public XContentBuilder buildBookSource(Book book) {
         XContentBuilder builder = null;
         try {
             builder = XContentFactory.jsonBuilder();
 
             builder.startObject();
             {
-                builder.field("id",book.getId());
+                builder.field("id", book.getId());
                 builder.field("title", book.getTitle());
                 builder.field("category");
-                builder.field("category.id",book.getCategory().getId());
-                builder.field("category.name",book.getCategory().getName());
-                builder.field("price",book.getPrice());
-                builder.field("pageNumber",book.getPageNumber());
-                builder.timeField("purchaseDate",book.getPurchaseDate());
+                builder.field("category.id", book.getCategory().getId());
+                builder.field("category.name", book.getCategory().getName());
+                builder.field("price", book.getPrice());
+                builder.field("pageNumber", book.getPageNumber());
+                builder.timeField("purchaseDate", book.getPurchaseDate());
                 builder.timeField("publishingDate", book.getPublishingDate());
                 builder.field("writer.id", book.getWriter().getId());
                 builder.field("writer.firstName", book.getWriter().getFirstName());
@@ -273,4 +282,26 @@ public class BookRepository implements Repository {
         }
         return null;
     }
+
+    public String getCat() {
+        SearchRequest sr = new SearchRequest("book-store");
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(QueryBuilders.matchAllQuery()).aggregation(AggregationBuilders.terms("unique_categories").field("category.fields.keyword"));
+        searchSourceBuilder.size(0);
+        sr.source(searchSourceBuilder);
+        try {
+            SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
+
+            Terms agg = searchResponse.getAggregations().get("unique_categories");
+            List<String> cats = new ArrayList<>();
+            for (Terms.Bucket entry : agg.getBuckets()) {
+                cats.add(entry.getKeyAsString());
+            }
+            return cats.toString();
+        } catch (NullPointerException | ElasticsearchException | IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 }

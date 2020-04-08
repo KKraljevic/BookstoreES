@@ -4,9 +4,11 @@
 
 GET     /                               controllers.HomeController.index
 GET     /books                          controllers.BookController.getBooks()
+GET     /books/test                         controllers.BookController.getCat()
 GET     /books/search/:searchInput             controllers.BookController.searchBooks(searchInput:String)
 GET     /books/title/:title             controllers.BookController.getBooksByTitle(title:String)
-GET     /books/id/:id                   controllers.BookController.getBooksById(id:Long)
+GET     /books/featured                 controllers.BookController.getFeaturedBooks(size:Integer  ?= 4)
+GET     /books/:id                      controllers.BookController.getBooksById(id:Long)
 GET     /books/category/:category       controllers.BookController.getBooksByCategory(category:String)
 GET     /books/writer/:firstName/:lastName                  controllers.BookController.getBooksByWriter(firstName:String,lastName:String)
 # Date format in path 2019-08-15
@@ -16,6 +18,5 @@ GET     /books/pageNumber/:pageNumber                       controllers.BookCont
 GET     /books/pageNumber/:minPages/:maxPages               controllers.BookController.getBooksByPageRange(minPages:Integer, maxPages:Integer, size: Integer ?= 10)
 GET     /books/price/:price                                 controllers.BookController.getBooksByPrice(price:Integer)
 GET     /books/price/:minPrice/:maxPrice                    controllers.BookController.getBooksByPriceRange(minPrice:Integer, maxPrice:Integer, size: Integer ?= 10)
-GET     /books/featured                                     controllers.BookController.getFeaturedBooks(size:Integer  ?= 4)
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

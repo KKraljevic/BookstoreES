@@ -14,7 +14,7 @@ public interface Repository {
 
     List<Book> findAll();
 
-    Book findById(Long id);
+    List<Book> findById(Long id);
 
     List<Book> findByTitle(String title);
 
