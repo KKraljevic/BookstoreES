@@ -5,20 +5,13 @@ import java.util.List;
 public class Category {
     long id;
     String name;
-    String fields;
 
     public Category() {
     };
 
-    public Category(long id, String name) {
+    public Category(long id, String name ) {
         this.id = id;
         this.name = name;
-    }
-
-    public Category(long id, String name, String fields) {
-        this.id = id;
-        this.name = name;
-        this.fields = fields;
     }
 
     public long getId() {
@@ -36,8 +29,4 @@ public class Category {
     public void setName(String name) {
         this.name = name;
     }
-
-    public String getFields() { return fields; }
-
-    public void setFields(String fields) { this.fields = fields; }
 }

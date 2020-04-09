@@ -77,7 +77,21 @@ public class BookController extends Controller {
         return ok(Json.toJson(bookRepository.getFeaturedBooks(size)));
     }
 
-    public Result getCat() {
-        return ok(bookRepository.getCat());
+    public Result getTop10() {
+        return ok(Json.toJson(bookRepository.getTop10()));
     }
+
+    public Result getAggPriceRange() {
+        return ok(Json.toJson(bookRepository.aggPriceRange()));
+    }
+
+    public Result getAggPublishingDateRange() {
+        return ok(Json.toJson(bookRepository.aggPublishingDateRange()));
+    }
+
+    public Result getAggCategories() {
+        return ok(Json.toJson(bookRepository.aggCategories()));
+    }
+
+
 }
