@@ -5,14 +5,13 @@ import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
 import repositories.BookRepository;
+import utils.Paginate;
 
 import javax.inject.Inject;
-import java.util.List;
 
 public class BookController extends Controller {
 
     private final BookRepository bookRepository;
-    Integer defaultSize = 10;
 
     @Inject
     public BookController(BookRepository BookRepository) {
@@ -20,57 +19,58 @@ public class BookController extends Controller {
 
     }
 
-    public Result getBooks() {
-        return ok(Json.toJson(bookRepository.findAll()));
+    public Result getBooks(Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findAll(size, page, sort, order)));
     }
 
     public Result getBooksById(Long id) {
-        final List<Book> b = bookRepository.findById(id);
-        if (!b.isEmpty()) {
-            return ok(Json.toJson(b.get(0)));
+        final Paginate<Book> b = bookRepository.findById(id);
+        if (b != null) {
+            return ok(Json.toJson(b.getItems().get(0)));
         } else {
-            return notFound("No book with id:" + id.toString());
+            return notFound("No book with id: " + id.toString());
         }
     }
 
-    public Result getBooksByTitle(String title) {
-        return ok(Json.toJson(bookRepository.findByTitle(title)));
+    public Result getBooksByTitle(String title, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByTitle(title, size, page, sort, order)));
     }
 
-    public Result getBooksByCategory(String category) {
-        return ok(Json.toJson(bookRepository.findByCategory(category)));
+    public Result getBooksByCategory(String category, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByCategory(category, size, page, sort, order)));
     }
 
-    public Result getBooksByWriter(String firstName, String lastName) {
-        return ok(Json.toJson(bookRepository.findByWriter(firstName, lastName)));
+    public Result getBooksByWriter(String firstName, String lastName, Integer size, Integer page, String sort, String order
+    ) {
+        return ok(Json.toJson(bookRepository.findByWriter(firstName, lastName, size, page, sort, order)));
     }
 
-    public Result getBooksByPublishingDate(String publishingDate) {
-        return ok(Json.toJson(bookRepository.findByPublishingDate(publishingDate)));
+    public Result getBooksByPublishingDate(String publishingDate, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByPublishingDate(publishingDate, size, page, sort, order)));
     }
 
-    public Result getBooksByPublishingPeriod(String startDate, String endDate, Integer size) {
-        return ok(Json.toJson(bookRepository.findByDateRange("publishingDate", startDate, endDate, size)));
+    public Result getBooksByPublishingPeriod(String startDate, String endDate, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByDateRange("publishingDate", startDate, endDate, size, page, sort, order)));
     }
 
-    public Result getBooksByPrice(Integer price) {
-        return ok(Json.toJson(bookRepository.findByPrice(price)));
+    public Result getBooksByPrice(Integer price, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByPrice(price, size, page, sort, order)));
     }
 
-    public Result getBooksByPriceRange(Integer minPrice, Integer maxPrice, Integer size) {
-        return ok(Json.toJson(bookRepository.findByNumberRange("price", minPrice, maxPrice, size)));
+    public Result getBooksByPriceRange(Integer minPrice, Integer maxPrice, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByNumberRange("price", minPrice, maxPrice, size, page, sort, order)));
     }
 
-    public Result getBooksByPageNumber(Integer pageNumber) {
-        return ok(Json.toJson(bookRepository.findByPageNumber(pageNumber)));
+    public Result getBooksByPageNumber(Integer pageNumber, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByPageNumber(pageNumber, size, page, sort, order)));
     }
 
-    public Result getBooksByPageRange(Integer minLists, Integer maxLists, Integer size) {
-        return ok(Json.toJson(bookRepository.findByNumberRange("pageNumber", minLists, maxLists, size)));
+    public Result getBooksByPageRange(Integer minLists, Integer maxLists, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.findByNumberRange("pageNumber", minLists, maxLists, size, page, sort, order)));
     }
 
-    public Result searchBooks(String searchInput) {
-        return ok(Json.toJson(bookRepository.searchBooks(searchInput)));
+    public Result searchBooks(String searchInput, Integer size, Integer page, String sort, String order) {
+        return ok(Json.toJson(bookRepository.searchBooks(searchInput, size, page, sort, order)));
     }
 
     public Result getFeaturedBooks(Integer size) {

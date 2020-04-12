@@ -1,7 +1,6 @@
 package repositories;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import models.Book;
@@ -20,7 +19,6 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
@@ -36,12 +34,11 @@ import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.SortOrder;
-import play.libs.Json;
-
+import utils.Paginate;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -49,7 +46,7 @@ public class BookRepository implements Repository {
 
     RestHighLevelClient client;
     SearchRequest searchRequest;
-    Integer defaultSize = 10;
+    final String[] excludes = {"category.field", "category.fields"};
 
     public BookRepository() {
 
@@ -61,9 +58,9 @@ public class BookRepository implements Repository {
     @Override
     public Book createBook(Book book) {
         try {
-            XContentBuilder builder = buildBookSource(book);
-            IndexRequest indexRequest = new IndexRequest("book-store").source(builder);
-            IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
+            final XContentBuilder builder = buildBookSource(book);
+            final IndexRequest indexRequest = new IndexRequest("book-store").source(builder);
+            final IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
             if (indexResponse.getResult() == DocWriteResponse.Result.CREATED) {
                 return book;
             }
@@ -76,10 +73,9 @@ public class BookRepository implements Repository {
 
     @Override
     public Book updateBook(Book updatedBook, String docId) {
-        UpdateRequest request = new UpdateRequest("book-store", docId);
+        final UpdateRequest request = new UpdateRequest("book-store", docId);
         try {
-            XContentBuilder builder = buildBookSource(updatedBook);
-            IndexRequest indexRequest = new IndexRequest("book-store").source(builder);
+            final XContentBuilder builder = buildBookSource(updatedBook);
             UpdateResponse updateResponse = client.update(request, RequestOptions.DEFAULT);
             if (updateResponse.getResult() == DocWriteResponse.Result.CREATED) {
                 return updatedBook;
@@ -93,7 +89,7 @@ public class BookRepository implements Repository {
 
     @Override
     public String deleteBook(String docId) {
-        DeleteRequest deleteRequest = new DeleteRequest("book-store", docId);
+        final DeleteRequest deleteRequest = new DeleteRequest("book-store", docId);
         try {
             DeleteResponse deleteResponse = client.delete(deleteRequest, RequestOptions.DEFAULT);
             return deleteResponse.status().toString();
@@ -104,37 +100,38 @@ public class BookRepository implements Repository {
     }
 
     @Override
-    public List<Book> findAll() {
-        return searchByField(null, null, defaultSize);
+    public Paginate<Book> findAll(Integer size, Integer page, String sort, String order) {
+        return searchByField(null, null, size, page, sort, order);
     }
 
     @Override
-    public List<Book> findById(Long id) {
-        return searchByField("id", id.toString(), 1);
+    public Paginate<Book> findById(Long id) {
+        return searchByField("id", id.toString(), 1, 1, "id", "DESC");
     }
 
     @Override
-    public List<Book> findByTitle(String title) {
-        return searchByField("title", title, defaultSize);
+    public Paginate<Book> findByTitle(String title, Integer size, Integer page, String sort, String order) {
+        return searchByField("title", title, size, page, sort, order);
     }
 
     @Override
-    public List<Book> findByWriter(String firstName, String lastName) {
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    public Paginate<Book> findByWriter(String firstName, String lastName, Integer size, Integer page, String sort, String order
+    ) {
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.multiMatchQuery(firstName + " " + lastName,
                 "writer.firstName", "writer.lastName").type(MultiMatchQueryBuilder.Type.CROSS_FIELDS));
-        searchSourceBuilder.size(defaultSize);
-
-        String[] excludes = {"category.field", "category.fields"};
+        searchSourceBuilder.from((page - 1) * size).size(size);
+        searchSourceBuilder.sort(sort, SortOrder.fromString(order));
         searchSourceBuilder.fetchSource(null, excludes);
         searchRequest.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             SearchHits hits = searchResponse.getHits();
             if (hits.getTotalHits().value == 0) {
                 return null;
             }
-            return mapBookList(hits);
+
+            return new Paginate<Book>(mapBookList(hits), page, size, sort, order, hits.getTotalHits().value);
 
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();
@@ -143,42 +140,42 @@ public class BookRepository implements Repository {
     }
 
     @Override
-    public List<Book> findByCategory(String category) {
-        return searchByField("category.name", category, defaultSize);
+    public Paginate<Book> findByCategory(String category, Integer size, Integer page, String sort, String order) {
+        return searchByField("category.name", category, size, page, sort, order);
     }
 
     @Override
-    public List<Book> findByPrice(Integer price) {
-        return searchByField("price", price.toString(), defaultSize);
+    public Paginate<Book> findByPrice(Integer price, Integer size, Integer page, String sort, String order) {
+        return searchByField("price", price.toString(), size, page, sort, order);
     }
 
     @Override
-    public List<Book> findByPageNumber(Integer pageNumber) {
-        return searchByField("pageNumber", pageNumber.toString(), defaultSize);
+    public Paginate<Book> findByPageNumber(Integer pageNumber, Integer size, Integer page, String sort, String order) {
+        return searchByField("pageNumber", pageNumber.toString(), size, page, sort, order);
     }
 
     @Override
-    public List<Book> findByPublishingDate(String date) {
-        return searchByField("publishingDate", date, defaultSize);
+    public Paginate<Book> findByPublishingDate(String date, Integer size, Integer page, String sort, String order) {
+        return searchByField("publishingDate", date, size, page, sort, order);
     }
 
     @Override
-    public List<Book> findByNumberRange(String field, Integer min, Integer max, Integer size) {
+    public Paginate<Book> findByNumberRange(String field, Integer min, Integer max, Integer size, Integer page, String sort, String order) {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.rangeQuery(field).gte(min).lte(max));
-        searchSourceBuilder.size(size);
-
+        searchSourceBuilder.from((page - 1) * size).size(size);
+        searchSourceBuilder.sort(sort, SortOrder.fromString(order));
         String[] excludes = {"category.field", "category.fields"};
         searchSourceBuilder.fetchSource(null, excludes);
         searchRequest.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             SearchHits hits = searchResponse.getHits();
             if (hits.getTotalHits().value == 0) {
                 return null;
             }
-            return mapBookList(hits);
+            return new Paginate<Book>(mapBookList(hits), page, size, sort, order, hits.getTotalHits().value);
 
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();
@@ -187,24 +184,24 @@ public class BookRepository implements Repository {
     }
 
     @Override
-    public List<Book> findByDateRange(String field, String startDate, String endDate, Integer size) {
+    public Paginate<Book> findByDateRange(String field, String startDate, String endDate, Integer size, Integer page, String sort, String order) {
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.rangeQuery(field).from(startDate).to(endDate));
-        searchSourceBuilder.size(size);
-
+        searchSourceBuilder.from((page - 1) * size).size(size);
+        searchSourceBuilder.sort(sort, SortOrder.fromString(order));
         String[] excludes = {"category.field", "category.fields"};
         searchSourceBuilder.fetchSource(null, excludes);
         searchSourceBuilder.sort(new FieldSortBuilder("unitsSold").order(SortOrder.DESC));
         searchRequest.source(searchSourceBuilder);
 
         try {
-            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             SearchHits hits = searchResponse.getHits();
             if (hits.getTotalHits().value == 0) {
                 return null;
             }
-            return mapBookList(hits);
+            return new Paginate<Book>(mapBookList(hits), page, size, sort, order, hits.getTotalHits().value);
 
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();
@@ -213,19 +210,19 @@ public class BookRepository implements Repository {
     }
 
     @Override
-    public List<Book> searchBooks(String searchInput) {
-        return searchByField(null, searchInput, defaultSize);
+    public Paginate<Book> searchBooks(String searchInput, Integer size, Integer page, String sort, String order) {
+        return searchByField(null, searchInput, size, page, sort, order);
     }
 
     @Override
-    public List<Book> getFeaturedBooks(Integer size) {
-        return searchByField(null, null, 4);
+    public Paginate<Book> getFeaturedBooks(Integer size) {
+        return searchByField(null, null, size, 1, "unitsSold", "DESC");
     }
 
-    public List<Book> searchByField(String fieldName, String searchText, Integer size) {
-        SearchRequest searchRequest = new SearchRequest("book-store");
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        if (fieldName == null && searchText == null) {
+    public Paginate<Book> searchByField(String fieldName, String searchText, Integer size, Integer page, String sort, String order) {
+        final SearchRequest searchRequest = new SearchRequest("book-store");
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        if (fieldName == null && (searchText == null || searchText.isEmpty())) {
             searchSourceBuilder.query(QueryBuilders.matchAllQuery());
         } else {
             if (fieldName == null) {
@@ -235,18 +232,18 @@ public class BookRepository implements Repository {
             }
 
         }
-        String[] excludes = {"category.field", "category.fields"};
-        searchSourceBuilder.size(size);
+        searchSourceBuilder.from((page - 1) * size).size(size);
+        searchSourceBuilder.sort(sort, SortOrder.fromString(order));
         searchSourceBuilder.fetchSource(null, excludes);
-        searchSourceBuilder.sort(new FieldSortBuilder("unitsSold").order(SortOrder.DESC));
+        searchSourceBuilder.sort(new FieldSortBuilder(sort).order(SortOrder.fromString(order)));
         searchRequest.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             SearchHits hits = searchResponse.getHits();
             if (hits.getTotalHits().value == 0) {
-                return null;
+                return new Paginate<Book>(Arrays.asList(), page, size, sort, order, hits.getTotalHits().value);
             }
-            return mapBookList(hits);
+            return new Paginate<Book>(mapBookList(hits), page, size, sort, order, hits.getTotalHits().value);
 
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();
@@ -255,11 +252,11 @@ public class BookRepository implements Repository {
     }
 
     public List<Book> mapBookList(SearchHits hits) {
-        ObjectMapper mapper = new ObjectMapper();
-        List<Book> books = new ArrayList<>();
+        final ObjectMapper mapper = new ObjectMapper();
+        final List<Book> books = new ArrayList<>();
         try {
             for (SearchHit hit : hits) {
-                Book book = mapper.readValue(hit.getSourceAsString(), Book.class);
+                final Book book = mapper.readValue(hit.getSourceAsString(), Book.class);
                 books.add(book);
             }
         } catch (JsonProcessingException e) {
@@ -300,9 +297,9 @@ public class BookRepository implements Repository {
     }
 
     public List<Pair> aggPublishingDateRange() {
-        SearchRequest sr = new SearchRequest("book-store");
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        AggregationBuilder aggregation =
+        final SearchRequest sr = new SearchRequest("book-store");
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        final AggregationBuilder aggregation =
                 AggregationBuilders
                         .dateHistogram("agg")
                         .field("publishingDate")
@@ -312,12 +309,12 @@ public class BookRepository implements Repository {
         searchSourceBuilder.query(QueryBuilders.matchAllQuery()).aggregation(aggregation);
         sr.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
             Histogram agg = searchResponse.getAggregations().get("agg");
 
-            List<Pair> result = new ArrayList<>();
+            final List<Pair> result = new ArrayList<>();
             for (Histogram.Bucket entry : agg.getBuckets()) {
-                result.add(new Pair(entry.getKeyAsString(),entry.getDocCount()));
+                result.add(new Pair(entry.getKeyAsString(), entry.getDocCount()));
             }
             return result;
         } catch (NullPointerException | ElasticsearchException | IOException e) {
@@ -327,29 +324,28 @@ public class BookRepository implements Repository {
     }
 
     public List<Pair> aggPriceRange() {
-        SearchRequest sr = new SearchRequest("book-store");
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        final SearchRequest sr = new SearchRequest("book-store");
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-        AggregationBuilder aggregation =
+        final AggregationBuilder aggregation =
                 AggregationBuilders
                         .range("agg")
                         .field("price")
                         .addUnboundedTo(100f)
                         .addRange(100, 200f)
                         .addRange(200, 300f)
-                        .addRange(300, 400f)
-                        .addUnboundedFrom(500f);
+                        .addUnboundedFrom(300);
 
         searchSourceBuilder.query(QueryBuilders.matchAllQuery()).aggregation(aggregation);
         sr.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
 
-            Range agg = searchResponse.getAggregations().get("agg");
-            List<Pair> result = new ArrayList<>();
+            final Range agg = searchResponse.getAggregations().get("agg");
+            final List<Pair> result = new ArrayList<>();
             for (Range.Bucket entry : agg.getBuckets()) {
-                if(entry.getDocCount()>0) {
-                    result.add(new Pair(entry.getKeyAsString(),entry.getDocCount()));
+                if (entry.getDocCount() > 0) {
+                    result.add(new Pair(entry.getKeyAsString(), entry.getDocCount()));
                 }
             }
             return result;
@@ -360,23 +356,23 @@ public class BookRepository implements Repository {
     }
 
     public List<Pair> aggCategories() {
-        SearchRequest sr = new SearchRequest("book-store");
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        final SearchRequest sr = new SearchRequest("book-store");
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.fetchSource(false).aggregation(AggregationBuilders
                 .terms("categories")
                 .field("category.name.keyword")
-                );
+        );
         sr.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(sr, RequestOptions.DEFAULT);
 
-            Terms categories = searchResponse.getAggregations().get("categories");
+            final Terms categories = searchResponse.getAggregations().get("categories");
             System.out.println(searchResponse.toString());
-            List<Pair> result = new ArrayList<>();
+            final List<Pair> result = new ArrayList<>();
             for (Terms.Bucket entry : categories.getBuckets()) {
                 result.add(new Pair(entry.getKeyAsString(), entry.getDocCount()));
             }
-          return result;
+            return result;
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();
         }
@@ -385,23 +381,23 @@ public class BookRepository implements Repository {
     }
 
     public List<Pair> getTop10() {
-        SearchRequest searchRequest = new SearchRequest("book-store");
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        final SearchRequest searchRequest = new SearchRequest("book-store");
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.matchAllQuery());
         searchSourceBuilder.size(10);
-        String[] includes = {"title", "unitsSold"};
-        searchSourceBuilder.fetchSource(includes,null);
+        final String[] includes = {"title", "unitsSold"};
+        searchSourceBuilder.fetchSource(includes, null);
         searchSourceBuilder.sort(new FieldSortBuilder("unitsSold").order(SortOrder.DESC));
         searchRequest.source(searchSourceBuilder);
-        List<Pair> result = new ArrayList<>();
+        final List<Pair> result = new ArrayList<>();
         try {
-            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            final SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             SearchHits hits = searchResponse.getHits();
             if (hits.getTotalHits().value == 0) {
                 return null;
             }
             for (SearchHit hit : hits) {
-                Map<String, Object> sourcefields = hit.getSourceAsMap();
+                final Map<String, Object> sourcefields = hit.getSourceAsMap();
                 result.add(new Pair(
                         sourcefields.get("title").toString(),
                         Long.parseLong(sourcefields.get("unitsSold").toString()

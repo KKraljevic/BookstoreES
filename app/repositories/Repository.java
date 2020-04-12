@@ -1,8 +1,7 @@
 package repositories;
 
 import models.Book;
-
-import java.util.List;
+import utils.Paginate;
 
 public interface Repository {
 
@@ -12,28 +11,28 @@ public interface Repository {
 
     String deleteBook(String docId);
 
-    List<Book> findAll();
+    Paginate<Book> findAll(Integer size, Integer page, String sort, String order);
 
-    List<Book> findById(Long id);
+    Paginate<Book> findById(Long id);
 
-    List<Book> findByTitle(String title);
+    Paginate<Book> findByTitle(String title, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByWriter(String firstName,String lastName);
+    Paginate<Book> findByWriter(String firstName, String lastName, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByCategory(String category);
+    Paginate<Book> findByCategory(String category, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByPrice(Integer price);
+    Paginate<Book> findByPrice(Integer price, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByPageNumber(Integer pageNumber);
+    Paginate<Book> findByPageNumber(Integer pageNumber, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByPublishingDate(String date);
+    Paginate<Book> findByPublishingDate(String date, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByNumberRange(String field, Integer min, Integer max, Integer size);
+    Paginate<Book> findByNumberRange(String field, Integer min, Integer max, Integer size, Integer page, String sort, String order);
 
-    List<Book> findByDateRange(String field, String startDate, String endDate, Integer size);
+    Paginate<Book> findByDateRange(String field, String startDate, String endDate, Integer size, Integer page, String sort, String order);
 
-    List<Book> searchBooks(String searchInput);
+    Paginate<Book> searchBooks(String searchInput, Integer size, Integer page, String sort, String order);
 
-    List<Book> getFeaturedBooks(Integer size);
+    Paginate<Book> getFeaturedBooks(Integer size);
 
 }
