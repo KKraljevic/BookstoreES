@@ -222,15 +222,16 @@ public class BookRepository implements Repository {
     public Paginate<Book> searchByField(String fieldName, String searchText, Integer size, Integer page, String sort, String order) {
         final SearchRequest searchRequest = new SearchRequest("book-store");
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        if (fieldName == null && (searchText == null || searchText.isEmpty())) {
-            searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-        } else {
-            if (fieldName == null) {
-                searchSourceBuilder.query(QueryBuilders.multiMatchQuery(searchText));
-            } else {
-                searchSourceBuilder.query(QueryBuilders.matchQuery(fieldName, searchText));
+        if (fieldName == null) {
+            if(searchText==null || searchText.isEmpty()) {
+                searchSourceBuilder.query(QueryBuilders.matchAllQuery());
             }
-
+            else {
+                searchSourceBuilder.query(QueryBuilders.multiMatchQuery(searchText,"title","writer.firstName","writer.lastName","category.name")
+                .type(MultiMatchQueryBuilder.Type.PHRASE_PREFIX));
+            }
+        } else {
+                searchSourceBuilder.query(QueryBuilders.matchQuery(fieldName, searchText));
         }
         searchSourceBuilder.from((page - 1) * size).size(size);
         searchSourceBuilder.sort(sort, SortOrder.fromString(order));
