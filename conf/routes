@@ -4,11 +4,11 @@
 
 GET     /                               controllers.HomeController.index
 GET     /books                          controllers.BookController.getBooks(size: Integer ?= 8, page: Integer ?= 1, sort: String ?="unitsSold",order: String ?="DESC")
+GET     /books/search                   controllers.BookController.searchBooks(searchInput: String ?="", size: Integer ?= 8, page: Integer ?= 1, sort: String ?="unitsSold",order: String ?="DESC")
 GET     /books/agg/price                controllers.BookController.getAggPriceRange()
 GET     /books/agg/publishingDate       controllers.BookController.getAggPublishingDateRange()
 GET     /books/agg/categories           controllers.BookController.getAggCategories()
 GET     /books/agg/top10                controllers.BookController.getTop10()
-GET     /books/search                   controllers.BookController.searchBooks(searchInput: String ?="", size: Integer ?= 8, page: Integer ?= 1, sort: String ?="unitsSold",order: String ?="DESC")
 GET     /books/title/:title             controllers.BookController.getBooksByTitle(title:String, size: Integer ?= 8, page: Integer ?= 1, sort: String ?="unitsSold",order: String ?="DESC")
 GET     /books/featured                 controllers.BookController.getFeaturedBooks(size:Integer  ?= 4)
 GET     /books/:id                      controllers.BookController.getBooksById(id:Long)

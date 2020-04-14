@@ -46,7 +46,7 @@ public class BookRepository implements Repository {
 
     RestHighLevelClient client;
     SearchRequest searchRequest;
-    final String[] excludes = {"category.field", "category.fields"};
+    final String[] excludes = {"category.field", "category.fields", "time", "book"};
 
     public BookRepository() {
 
@@ -223,15 +223,14 @@ public class BookRepository implements Repository {
         final SearchRequest searchRequest = new SearchRequest("book-store");
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         if (fieldName == null) {
-            if(searchText==null || searchText.isEmpty()) {
+            if (searchText == null || searchText.isEmpty()) {
                 searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-            }
-            else {
-                searchSourceBuilder.query(QueryBuilders.multiMatchQuery(searchText,"title","writer.firstName","writer.lastName","category.name")
-                .type(MultiMatchQueryBuilder.Type.PHRASE_PREFIX));
+            } else {
+                searchSourceBuilder.query(QueryBuilders.multiMatchQuery(searchText, "title", "writer.firstName", "writer.lastName", "category.name")
+                        .type(MultiMatchQueryBuilder.Type.PHRASE_PREFIX));
             }
         } else {
-                searchSourceBuilder.query(QueryBuilders.matchQuery(fieldName, searchText));
+            searchSourceBuilder.query(QueryBuilders.matchQuery(fieldName, searchText));
         }
         searchSourceBuilder.from((page - 1) * size).size(size);
         searchSourceBuilder.sort(sort, SortOrder.fromString(order));
