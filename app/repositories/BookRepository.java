@@ -1,10 +1,15 @@
 package repositories;
 
+import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchPhraseQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchQuery;
+import static org.elasticsearch.index.query.QueryBuilders.rangeQuery;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import models.Book;
 import models.Pair;
+import models.Search;
 import org.apache.http.HttpHost;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteResponse;
@@ -21,6 +26,7 @@ import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -219,6 +225,57 @@ public class BookRepository implements Repository {
         return searchByField(null, null, size, 1, "unitsSold", "DESC");
     }
 
+    @Override
+    public Paginate<Book> getSearchedBooks(Search search) {
+        return searchAndFilter(search);
+    }
+
+    private BoolQueryBuilder createQuery(Search search) {
+        BoolQueryBuilder query = boolQuery();
+
+        if (!search.getId().isEmpty()) {
+            query.must(matchQuery("isbn", search.getId()));
+        }
+
+        if (!search.getTitle().isEmpty()) {
+            query.must(matchQuery("title", search.getTitle()));
+        }
+
+        if (search.getWriter() != null) {
+            query.must(matchPhraseQuery("writer.firstName", search.getWriter().getFirstName()));
+        }
+
+        if (!search.getDescription().isEmpty()) {
+            query.must(matchQuery("description", search.getDescription()));
+        }
+
+        if (search.getPriceFrom() > 0) {
+            query.must(rangeQuery("price").from(search.getPriceFrom()));
+        }
+
+        if (search.getPriceTo() > 0) {
+            query.must(rangeQuery("price").to(search.getPriceTo()));
+        }
+
+        if (search.getYearFrom() > 0) {
+            query.must(rangeQuery("publishedDate").from(search.getYearFrom()));
+        }
+
+        if (search.getYearTo() > 0) {
+            query.must(rangeQuery("publishedDate").to(search.getYearTo()));
+        }
+
+        if (search.getPageCountFrom() > 0) {
+            query.must(rangeQuery("pageCount").from(search.getPageCountFrom()));
+        }
+
+        if (search.getPageCountTo() > 0) {
+            query.must(rangeQuery("pageCount").to(search.getPageCountTo()));
+        }
+
+        return query;
+    }
+
     public Paginate<Book> searchByField(String fieldName, String searchText, Integer size, Integer page, String sort, String order) {
         final SearchRequest searchRequest = new SearchRequest("book-store");
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -244,6 +301,34 @@ public class BookRepository implements Repository {
                 return new Paginate<Book>(Arrays.asList(), page, size, sort, order, hits.getTotalHits().value);
             }
             return new Paginate<Book>(mapBookList(hits), page, size, sort, order, hits.getTotalHits().value);
+
+        } catch (NullPointerException | ElasticsearchException | IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public Paginate<Book> searchAndFilter(Search search) {
+        final SearchRequest searchRequest = new SearchRequest("book-store");
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        BoolQueryBuilder query = this.createQuery(search);
+
+        searchSourceBuilder.query(query);
+        searchSourceBuilder.from((search.getFrom() - 1) * search.getSize()).size(search.getSize());
+        searchSourceBuilder.sort(search.getSortBy(), SortOrder.fromString(search.getSortDirection())); // ?
+        searchSourceBuilder.fetchSource(null, excludes);
+        searchSourceBuilder.sort(new FieldSortBuilder(search.getSortBy())
+            .order(SortOrder.fromString(search.getSortDirection())));
+        searchRequest.source(searchSourceBuilder);
+        try {
+            final SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            SearchHits hits = searchResponse.getHits();
+            if (hits.getTotalHits().value == 0) {
+                return new Paginate<Book>(Arrays.asList(), search.getFrom(), search.getSize(),
+                    search.getSortBy(), search.getSortDirection(), hits.getTotalHits().value);
+            }
+            return new Paginate<Book>(mapBookList(hits), search.getFrom(), search.getSize(),
+                search.getSortBy(), search.getSortDirection(), hits.getTotalHits().value);
 
         } catch (NullPointerException | ElasticsearchException | IOException e) {
             e.printStackTrace();

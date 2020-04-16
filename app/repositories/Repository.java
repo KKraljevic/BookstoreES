@@ -1,6 +1,7 @@
 package repositories;
 
 import models.Book;
+import models.Search;
 import utils.Paginate;
 
 public interface Repository {
@@ -34,5 +35,7 @@ public interface Repository {
     Paginate<Book> searchBooks(String searchInput, Integer size, Integer page, String sort, String order);
 
     Paginate<Book> getFeaturedBooks(Integer size);
+
+    Paginate<Book> getSearchedBooks(Search search);
 
 }
